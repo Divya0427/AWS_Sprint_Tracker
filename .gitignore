@@ -1,0 +1,50 @@
+# ---- Node.js ----
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# ---- Build output ----
+dist/
+build/
+.coverage/
+*.cache/
+
+# ---- Logs ----
+logs/
+*.log
+*.log.*
+
+# ---- Env files ----
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# ---- IDE ----
+.vscode/
+.idea/
+*.swp
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+
+# ---- AWS Local Config ----
+.aws/
+amplify/#current-cloud-backend
+amplify/.config/local-env-info.json
+
+# ---- Server related ----
+server/data/*.json
+server/data/*.sqlite
+server/data/*.db
+
+# Ignore uploaded sprint files locally
+uploads/
+*.xlsx
+*.csv
+
+# ---- Git ----
+.git/
