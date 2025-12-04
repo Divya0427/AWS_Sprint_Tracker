@@ -5274,8 +5274,27 @@ GET method's integration response:
 ![alt text](image-75.png)
 ![alt text](image-76.png)
 ![alt text](image-77.png)
+![alt text](image-80.png)
 ![alt text](image-78.png)
 ![alt text](image-79.png)
+![alt text](image-81.png)
+![alt text](image-82.png)
+![alt text](image-83.png)
+Content-security-policy's value
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self' data:;
+connect-src 'self' https://YOUR_API_ID.execute-api.ap-south-1.amazonaws.com;
+frame-ancestors 'none';
+base-uri 'self';
+
+![alt text](image-84.png)
+![alt text](image-85.png)
+
+# Live URL:
+https://dr529pnbgi820.cloudfront.net/
 
 # My Questions
 - different types of authenticationmethods supported by AWS
