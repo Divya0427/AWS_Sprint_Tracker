@@ -20,16 +20,13 @@ import {
 
 import SearchIcon from "@mui/icons-material/Search";
 import SortIcon from "@mui/icons-material/Sort";
+// import { apiGetMyWork, apiUpdateWorkItem } from "../services/api";
+import { getMyWork } from "../api/myWork";
+import { updateWorkItem } from "../api/workItems";
 
-import { apiGetMyWork, apiUpdateWorkItem } from "../services/api";
 import { Protocol } from "../types";
 
-interface Props {
-  token: string;
-  username: string;
-}
-
-export default function MyWorkPage({ token }: Props) {
+export default function MyWorkPage() {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [updating, setUpdating] = useState(false);
 
@@ -41,14 +38,18 @@ export default function MyWorkPage({ token }: Props) {
   const [sortBySP, setSortBySP] = useState<"ASC" | "DESC" | "NONE">("NONE");
 
   const loadData = async () => {
-    if (!token) return;
-    const data = await apiGetMyWork(token);
-    setProtocols(data);
+    try {
+      const data = await getMyWork(); // from AWS
+      setProtocols(data);
+    } catch (err) {
+      console.error("Failed to load my work", err);
+    }
   };
+
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, []);
 
   const statusOptions = [
     "Not Started",
@@ -74,7 +75,7 @@ export default function MyWorkPage({ token }: Props) {
   ) => {
     setUpdating(true);
     try {
-      await apiUpdateWorkItem(token, protocolId, disc, { [field]: value });
+      await updateWorkItem(protocolId, disc, { [field]: value });
       await loadData();
     } catch (err) {
       console.error(err);
@@ -83,6 +84,7 @@ export default function MyWorkPage({ token }: Props) {
       setUpdating(false);
     }
   };
+
 
   // Flatten protocols into rows
   const flatRows = useMemo(() => {

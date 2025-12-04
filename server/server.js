@@ -87,7 +87,6 @@ function rebuildProtocolsFromSprintSetup() {
   protocols = nextProtocols;
 
   // ⭐ IMPORTANT: Print what backend really loaded
-  console.log("Loaded protocols:", JSON.stringify(protocols, null, 2));
 }
 
 
@@ -113,16 +112,25 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // Simple auth middleware
+// Very simple auth middleware for LOCAL DEV with Cognito
 app.use((req, _res, next) => {
   const auth = req.headers.authorization || "";
+
   if (auth.startsWith("Bearer ")) {
     const token = auth.replace("Bearer ", "");
-    if (users[token]) {
-      req.user = { username: token, role: users[token].role };
-    }
+
+    // For local dev, we TRUST that any Bearer token is a valid Cognito token.
+    // Later, in AWS, API Gateway + Cognito Authorizer will actually verify it.
+    req.user = {
+      username: "cognito-user",
+      role: "lead",
+      token, // keep token in case you want to inspect it
+    };
   }
+
   next();
 });
+
 
 // --------------------------
 // Sprint Setup APIs

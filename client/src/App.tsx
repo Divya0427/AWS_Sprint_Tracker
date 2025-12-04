@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-
+import { signOut } from "aws-amplify/auth";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import MyWorkPage from "./pages/MyWorkPage";
@@ -19,11 +19,20 @@ export default function App() {
     setRole(r);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Tell Cognito to clear its session + tokens
+      await signOut();
+    } catch (err) {
+      console.error("Error during Cognito sign-out:", err);
+    }
+
+    // Now clear your app's local auth state
     setToken("");
     setUsername("");
     setRole("");
   };
+
 
   // If not logged in → always go to Login
   if (!token) {
@@ -39,12 +48,12 @@ export default function App() {
 
         <Route
           path="/my-work"
-          element={<MyWorkPage token={token} username={username} />}
+          element={<MyWorkPage />}
         />
 
         <Route
           path="/workload"
-          element={<WorkloadPage token={token} sprintId="SPRINT_1" />}
+          element={<WorkloadPage sprintId="SPRINT_1" />}
         />
 
 

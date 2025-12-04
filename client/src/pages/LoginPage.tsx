@@ -8,6 +8,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { apiLogin } from "../services/api";
+import { signIn, confirmSignIn, fetchAuthSession } from "aws-amplify/auth";
+
+
 
 interface Props {
   onLoginSuccess: (token: string, username: string, role: string) => void;
@@ -19,26 +22,53 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault(); // VERY IMPORTANT (prevents page reload)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
 
-    if (!username || !password) {
-      setError("Please enter both username and password");
-      return;
-    }
-
     try {
-      setLoading(true);
-      const res = await apiLogin(username, password);
-      onLoginSuccess(res.token, res.username, res.role);
-    } catch (e: any) {
-      console.error(e);
-      setError("Invalid username or password");
-    } finally {
-      setLoading(false);
+      // 1) Initial sign-in
+      const result = await signIn({
+        username, // your email
+        password,
+      });
+
+      console.log("signIn result:", result);
+
+      // 2) Handle "new password required" case
+      if (result.nextStep?.signInStep === "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED") {
+        console.log("NEW_PASSWORD_REQUIRED – sending new password...");
+
+        // Here we just reuse the same password as the new one
+        await confirmSignIn({
+          challengeResponse: password,
+        });
+      } else if (result.nextStep?.signInStep !== "DONE") {
+        console.warn("Sign-in requires an unsupported extra step:", result.nextStep);
+        setError("Sign-in requires an extra step that is not handled yet.");
+        return;
+      }
+
+      // 3) Fetch tokens after sign-in is fully completed
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString() ?? "";
+
+      if (!idToken) {
+        console.error("No idToken found in session");
+        setError("Login succeeded but no token found.");
+        return;
+      }
+
+      // 4) Reuse your existing login handling
+      onLoginSuccess(idToken, username, "lead");
+    } catch (err: any) {
+      console.error("Cognito sign-in error:", err);
+      setError("Invalid username or password (Cognito)");
     }
   };
+
+
+
 
   return (
     <Box

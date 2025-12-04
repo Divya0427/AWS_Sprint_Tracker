@@ -1,0 +1,10 @@
+{
+  "name": "sprint-setup-handler",
+  "version": "1.0.0",
+  "description": "Lambda function for handling sprint setup with DynamoDB",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "aws-sdk": "^2.1480.0"
+  }
+}

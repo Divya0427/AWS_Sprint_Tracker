@@ -9,36 +9,36 @@ import {
   TableCell,
   TableBody,
 } from "@mui/material";
-import { apiGetWorkload } from "../services/api";
+// import { apiGetWorkload } from "../services/api";
+import { getWorkload } from "../api/workload";
 import { WorkloadRow } from "../types";
 
 interface Props {
-  token: string;
   sprintId: string;
 }
 
-export default function WorkloadPage({ token, sprintId }: Props) {
+export default function WorkloadPage({ sprintId }: Props) {
   const [rows, setRows] = useState<WorkloadRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const loadData = async () => {
-    if (!token) return;
 
-    console.log("🔍 Loading workload for sprintId:", sprintId);
-
+  // FIX: sprintId must be in dependency array
+ useEffect(() => {
+  (async () => {
     try {
-      const data = await apiGetWorkload(token, sprintId);
+      setLoading(true);
+      console.log("🔍 Loading workload for sprintId: SPRINT_1");
+      const data = await getWorkload("SPRINT_1");
       console.log("📦 Workload data received:", data);
       setRows(data);
     } catch (err) {
-      console.error("❌ Error loading workload:", err);
-      setRows([]);
+      console.error("Failed to load workload", err);
+    } finally {
+      setLoading(false);
     }
-  };
+  })();
+}, []);
 
-  // FIX: sprintId must be in dependency array
-  useEffect(() => {
-    loadData();
-  }, [token, sprintId]);
 
   const getRowColor = (status: string) => {
     switch (status) {

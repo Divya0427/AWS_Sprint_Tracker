@@ -21,7 +21,9 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 import * as XLSX from "xlsx";
-import { apiGetSprintSetup, apiSaveSprintSetup } from "../services/api";
+// import { apiGetSprintSetup, apiSaveSprintSetup } from "../services/api";
+import { getSprintSetup, saveSprintSetup } from "../api/sprintSetup";
+
 
 interface SprintRow {
   id: string;
@@ -66,7 +68,7 @@ export default function SprintSetupPage() {
   useEffect(() => {
     (async () => {
       try {
-        const existing = await apiGetSprintSetup();
+        const existing = await getSprintSetup();
         if (Array.isArray(existing) && existing.length > 0) {
           const mapped: SprintRow[] = existing.map((r: any) => ({
             id: r.id || crypto.randomUUID(),
@@ -321,7 +323,7 @@ export default function SprintSetupPage() {
         totalSP: totalSP(r),
       }));
 
-      await apiSaveSprintSetup(payload);
+      await saveSprintSetup(payload);
       alert("Saved to backend successfully!");
     } catch (err) {
       console.error(err);
