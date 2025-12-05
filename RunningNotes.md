@@ -5304,7 +5304,6 @@ https://dr529pnbgi820.cloudfront.net/
 - what is aws-amplify?
 - JWT tokens(ID token, access token, refresh token)
 - what is redirect URL config in cognito?
-- User pool?
 - User pool vs having users in other DBs(DynamoDB, and the other)
 - self registration in cognito
 - Real time use cases for 
@@ -5319,8 +5318,7 @@ https://dr529pnbgi820.cloudfront.net/
 - Standard OIDC-compliant (JWT)
 - How sessionID is stateful and JWT is stateless
 - API gateway's cognito authorizer
-- auth code + PKCE means
-* Browser cache
+- auth code + PKCE(Proof Key for Code Exchange) means
 - How can we store JWT tokens in localStorage, sessionStorage, IndexedDB, React state without protection, Browser cache -> not recommended but Want to see how this can be done
 - Short token TTL(time to live)?
 - Refresh token rotation
