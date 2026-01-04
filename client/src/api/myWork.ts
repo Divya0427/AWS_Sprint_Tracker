@@ -26,5 +26,5 @@ async function authFetch(path: string, options: RequestInit = {}) {
 }
 
 export async function getMyWork(): Promise<Protocol[]> {
-  return authFetch("/api/my-work", { method: "GET" });
+  return authFetch("/my-work", { method: "GET" });
 }

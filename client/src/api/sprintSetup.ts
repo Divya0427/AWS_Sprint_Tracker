@@ -24,11 +24,11 @@ async function authFetch(path: string, options: RequestInit = {}) {
 }
 
 export async function getSprintSetup() {
-  return authFetch("/api/sprint-setup", { method: "GET" });
+  return authFetch("/sprint-setup", { method: "GET" });
 }
 
 export async function saveSprintSetup(rows: any[]) {
-  return authFetch("/api/sprint-setup", {
+  return authFetch("/sprint-setup", {
     method: "POST",
     body: JSON.stringify(rows),
   });

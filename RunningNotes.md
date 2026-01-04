@@ -5327,3 +5327,707 @@ https://dr529pnbgi820.cloudfront.net/
 - how to verify issuer, audience, expiration, signature
 - How much time will it take to delete and redeploy using CDK with default configs/data
 - why allowed http methods are GET, HEAD in cloudFront?
+## ✅ Phase 1 – Foundation (COMPLETED)
+
+### What you built (manually, correctly)
+
+* Cognito User Pool
+
+  * 1 real user
+* Cognito Authorizer
+
+  * Integrated with API Gateway
+* API Gateway
+
+  * Multiple APIs protected by Cognito Authorizer
+* Lambda
+
+  * **Single Lambda acting as router/controller**
+  * Handles multiple endpoints
+* DynamoDB
+
+  * Table created manually
+  * Lambda integrated (read/write)
+* Frontend
+
+  * React app built
+  * Uploaded to S3
+  * Served via CloudFront
+* Packaging
+
+  * Node dependencies zipped manually
+  * Uploaded to Lambda
+### Your key questions (important — shows senior thinking)
+
+* “Will CDK replace my existing infra?”
+  * CDK automates infra, **not application logic**
+* “Can we run manual infra and CDK infra in parallel?”
+  * Parallel migration is safer and preferred
+* “Will my existing data/users be lost?”
+  * Existing infra remains untouched
+* “Do resource names have to match?”
+  * Resource names do **not** need to match
+* “Will my app code change?”
+  * App code remains unchanged (only config/env changes later)
+# PHASE2 (CDK Integration/automation)
+- whetever I did so far will be automated using CDK
+- it's like a parallel setup leaving the existing flow untouched
+- no code changes are required
+- Typescript is recommended for JS/FE engineers
+- CDK is implemented using Typescript
+- Javascript, python, Java, C#, Go languages are available. but TypeScript is recommended
+## DynamoDB via CDK (Steps I followed)
+- Launch CloudShell and run below to check prerequisites
+``` $ aws sts get-caller-identity
+{
+    "UserId": "AIDA4AQ3TZ7VYBLKQXK3X",
+    "Account": "825765384171",
+    "Arn": "arn:aws:iam::825765384171:user/Bhargavi_User1"
+}
+```
+- Run below 
+```
+mkdir sprint-tracker
+cd sprint-tracker
+mkdir infra
+cd infra
+```
+- Initialize CDK with TypeScript
+```
+cdk init app --language typescript
+```
+👉 This creates the CDK skeleton.
+👉 It does NOT touch AWS yet.
+![alt text](image-86.png)
+![alt text](image-87.png)
+![alt text](image-88.png)
+- To verify the skeleton, run 
+```
+npm install
+cdk synth
+```
+![alt text](image-89.png)
+![alt text](image-90.png)
+![alt text](image-91.png)
+Renamed the file in lib
+![alt text](image-92.png)
+
+
+// Import the core CDK library.
+// This provides App, Stack, environment handling, etc.
+import * as cdk from 'aws-cdk-lib';
+
+// Import the DataStack class we defined earlier.
+// This stack knows HOW to create DynamoDB resources.
+import { DataStack } from '../lib/stacks/data-stack';
+
+// Import environment-specific configuration for DEV.
+// This contains names and identifiers unique to DEV.
+import { devConfig } from '../lib/config/dev';
+
+// Import environment-specific configuration for QA.
+// This ensures QA is isolated from DEV.
+import { qaConfig } from '../lib/config/qa';
+
+// Create a CDK App.
+// This represents the entire CDK application.
+// Without this, nothing can be synthesized or deployed.
+const app = new cdk.App();
+
+/*
+|--------------------------------------------------------------------------
+| DEV ENVIRONMENT
+|--------------------------------------------------------------------------
+| We are creating a DEV version of the DataStack.
+| This is completely isolated from QA.
+| This is where active development happens.
+*/
+
+// Instantiate the DataStack for DEV.
+// - 'SprintTracker-Dev-Data' is the CloudFormation stack name.
+// - This name must be unique within the AWS account.
+// - We pass devConfig so this stack knows:
+//   - it is DEV
+//   - which table name to use
+new DataStack(app, 'SprintTracker-Dev-Data', {
+  config: devConfig,
+});
+
+/*
+|--------------------------------------------------------------------------
+| QA ENVIRONMENT
+|--------------------------------------------------------------------------
+| We are creating a QA version of the DataStack.
+| QA is stable and closer to production.
+| It MUST NOT share resources with DEV.
+*/
+
+// Instantiate the DataStack for QA.
+// - Separate stack name
+// - Separate configuration
+// - Separate DynamoDB table
+new DataStack(app, 'SprintTracker-QA-Data', {
+  config: qaConfig,
+});
+- After adding data-stack.ts
+![alt text](image-93.png)
+- Deploy DEV
+```
+cdk deploy SprintTracker-Dev-Data
+```
+![alt text](image-94.png)
+> `SSM parameter /cdk-bootstrap/hnb659fds/version not found. Has the environment been bootstrapped?`
+
+Translation in plain English:
+
+👉 **Your AWS account/region is NOT yet prepared to accept CDK deployments.**
+
+CDK needs to create some **helper infrastructure** *once per account per region* before it can deploy stacks.
+
+This step is called **bootstrapping**.
+
+---
+
+## 🧠 What is CDK bootstrap? (no hand-waving)
+
+When you run `cdk bootstrap`, CDK creates:
+
+* An **S3 bucket**
+  → to store synthesized CloudFormation templates and assets
+* Some **IAM roles**
+  → deploy role, execution role
+* A **version marker** in SSM
+  → `/cdk-bootstrap/hnb659fds/version`
+
+This is **not your app infrastructure**.
+This is **CDK’s own support infrastructure**.
+
+You do this:
+
+* ✅ once per AWS account
+* ✅ once per region (ap-south-1 in your case)
+
+---
+
+## 🟡 About this warning line (important, but not blocking)
+
+> `current credentials could not be used to assume ... cdk-hnb659fds-deploy-role`
+
+This appears because:
+
+* The bootstrap roles **don’t exist yet**
+* CDK tried to assume them
+* Couldn’t find them
+* Continued anyway
+
+This is expected **before bootstrapping**.
+
+Once bootstrap is done, this warning disappears.
+```
+cdk bootstrap aws://825765384171/ap-south-1
+```
+![alt text](image-95.png)
+Deploy Sprint-Tracker-Dev-Data
+![alt text](image-96.png)
+this created a table in my account(DynamoDB > Tables)
+![alt text](image-97.png)
+with this, CDK bootstrap done and DEV DataStack deployed successfully.
+- Bootstrapped CDK for account + region
+- Deployed a stateful resource (DynamoDB) safely
+- Used parallel strategy (manual infra untouched)
+- Isolated DEV environment
+- Used RemovalPolicy.RETAIN correctly
+## Lambda via CDK (DEV only)
+- after creating lib/stacks/lambda-stack.ts and updated bin/infra.ts, run `cdk synth`
+![alt text](image-98.png)
+- deploy
+```
+cdk deploy SprintTracker-Dev-Lambda
+```
+![alt text](image-99.png)
+![alt text](image-100.png)
+verified it in console that it's created
+![alt text](image-101.png)
+### Grant Lambda least-privilege access to DEV DynamoDB
+- fix a missing architectural link (important)
+- Your DataStack creates the table, but:
+- LambdaStack has no reference to that table
+- CDK must explicitly pass resources between stacks
+- Stacks never “discover” each other automatically.
+We will:
+- Export the DynamoDB table from DataStack
+- Import it into LambdaStack
+- Grant only required permissions
+#### 1. Export DynamoDB table from DataStack
+“Why did you expose the DynamoDB table as a stack property?”
+“Because it’s consumed by another stack. Exposing it as a property allows CDK to model cross-stack dependencies and generate least-privilege IAM automatically.”
+![alt text](image-102.png)
+Now, 
+```
+cdk deploy SprintTracker-Dev-Lambda
+```
+Lambda function is given access (IAM role)
+![alt text](image-103.png)
+Lambda wired to Dev Dynamo DB(with IAM).
+## API Gateway (DEV only)
+HTTP request
+   ↓
+API Gateway (DEV)
+   ↓
+Lambda (sprint-tracker-dev-handler)
+   ↓
+Returns response
+1. Create ApiStack
+api-stack.ts
+2. Wire ApiStack in infra.ts (DEV only)
+3. Validate(cdk synth)
+![alt text](image-104.png)
+4. Deploy
+```
+cdk deploy SprintTracker-Dev-Api
+```
+![alt text](image-105.png)
+![alt text](image-106.png)
+5. Verify in console
+`sprint-tracker-dev-api` is the api created from CDK
+![alt text](image-107.png)
+![alt text](image-108.png)
+try to hit the URL form the browser(GET)
+![alt text](image-109.png)
+
+Use NodejsFunction from aws-lambda-nodejs with esbuild
+This is:
+- AWS-recommended
+- CDK-native
+- Production-grade
+- Interview-safe
+- What real teams use
+NodejsFunction → esbuild → JS bundle → Lambda
+CDK will:
+- compile TS → JS
+- bundle dependencies
+- optimize output
+- deploy correct handler
+1. To fix this
+```
+npm install aws-cdk-lib(already installed by cdk init) esbuild
+Install only 
+
+npm install esbuild
+```
+# 🔍 Why `esbuild` is required
+
+`NodejsFunction` uses **esbuild under the hood** to:
+
+* transpile TypeScript → JavaScript
+* bundle dependencies
+* optimize output
+
+If `esbuild` is missing:
+
+* CDK synth/deploy will fail
+* Error will mention esbuild not found
+
+So installing **only `esbuild`** is correct and sufficient.
+
+2. Update Lambda handler
+“I deploy TypeScript Lambdas using CDK with NodejsFunction and esbuild bundling.”
+```
+cdk synth
+cdk deploy SprintTracker-Dev-Lambda
+```
+Now the issue is resolved and getting the response![alt text](image-110.png)
+**post-mortem of above issue(API-internal server error)** 
+## 1️⃣ What exactly went wrong (root cause, not symptoms)
+
+You ran:
+
+```bash
+npm install aws-cdk-lib aws-lambda-nodejs esbuild
+```
+And got:
+```
+No versions available for aws-lambda-nodejs
+```
+### Why this happened — the real reason
+
+You assumed:
+> “Because I import `NodejsFunction` from
+> `aws-cdk-lib/aws-lambda-nodejs`,
+> there must be an npm package called `aws-lambda-nodejs`.”
+
+That assumption is **reasonable**, but **wrong**.
+---
+## 2️⃣ The key misunderstanding (this is the crux)
+### ❌ Wrong mental model
+> “Every import path maps to an npm package.”
+### ✅ Correct mental model (CDK-specific)
+> **AWS CDK is a single npm package (`aws-cdk-lib`) that internally exposes many submodules.**
+So this:
+```ts
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+```
+does **NOT** mean:
+
+* there is an npm package called `aws-lambda-nodejs`
+It means:
+* inside the **already-installed** `aws-cdk-lib` package,
+* there is a submodule named `aws-lambda-nodejs`
+That’s why npm said:
+```
+No versions available
+```
+Because that package literally does not exist.
+---
+## 3️⃣ Why this confusion is common (and not a beginner mistake)
+This confusion happens because CDK uses **deep import paths** that *look* like packages:
+```
+aws-cdk-lib/aws-lambda
+aws-cdk-lib/aws-dynamodb
+aws-cdk-lib/aws-lambda-nodejs
+```
+But they are **namespaces inside one library**, not separate installs.
+---
+## 4️⃣ What actually *was* missing
+
+Not CDK.
+Not NodejsFunction.
+Not Lambda config.
+The **only missing dependency** was:
+> **`esbuild`**
+### Why esbuild is required
+`NodejsFunction` does this internally:
+* Takes your `index.ts`
+* Runs **esbuild**
+* Transpiles TypeScript → JavaScript
+* Bundles dependencies
+* Produces a deployable Lambda artifact
+
+But CDK does **not** bundle esbuild itself.
+You must provide it.
+So without esbuild:
+* CDK cannot compile your TypeScript Lambda
+* Lambda deployment fails (or runtime errors occur)
+---
+## 5️⃣ How we fixed it (precisely)
+### ❌ What we removed
+```bash
+npm install aws-lambda-nodejs   # wrong, nonexistent
+```
+### ✅ What we did instead
+```bash
+npm install esbuild
+```
+That’s all.
+Because:
+* `aws-cdk-lib` → already present
+* `NodejsFunction` → already available
+* `esbuild` → the missing compiler
+## 6️⃣ Why this is the **correct, production-grade fix**
+After the fix, your pipeline is now:
+```
+TypeScript Lambda source
+        ↓
+NodejsFunction (CDK)
+        ↓
+esbuild (local dependency)
+        ↓
+Bundled JavaScript
+        ↓
+AWS Lambda
+```
+This is:
+
+* AWS-recommended
+* CDK-native
+* Used in real production stacks
+* Interview-defensible
+### 1️⃣ CDK ≠ normal npm libraries
+CDK uses **namespaced submodules**, not separate packages.
+## 8️⃣ How to explain this in an interview (short & strong)
+If asked:
+> “Why do we need esbuild with CDK for Lambda?”
+Answer:
+> “When using `NodejsFunction`, CDK relies on esbuild to transpile and bundle TypeScript Lambdas. The construct lives inside `aws-cdk-lib`, but esbuild must be installed separately because CDK doesn’t ship a compiler.”
+Good question — and this is one of those areas where people repeat blog clichés without thinking. I won’t do that. I’ll give you the **real trade-off**, then tell you **what is correct for you**, not in theory.
+
+---
+
+## Short answer (no hedging)
+
+* **Cost-wise:**
+  👉 **One Lambda vs many Lambdas makes almost no meaningful cost difference** for normal workloads.
+
+* **Engineering-wise:**
+  👉 **Separate Lambdas per concern is the professional default**
+  👉 **One Lambda is acceptable early, but becomes technical debt**
+
+If someone tells you *“one Lambda is cheaper”* as a blanket statement — they don’t understand Lambda pricing deeply.
+
+Now let’s break it down properly.
+
+---
+
+## 1️⃣ Lambda pricing reality (facts, not opinions)
+
+AWS Lambda pricing has **two main components**:
+
+1. **Invocations**
+2. **Execution time (GB-seconds)**
+
+What **does NOT matter**:
+
+* Number of Lambda functions
+* Number of files
+* Number of handlers
+
+### Key truth
+
+> **10 endpoints in 1 Lambda vs 10 Lambdas = same cost, if traffic and execution time are the same**
+
+So cost is **not** decided by:
+
+* “single Lambda”
+* “multiple Lambdas”
+
+It’s decided by:
+
+* how often they run
+* how long they run
+* how much memory they use
+
+---
+
+## 2️⃣ Where people get confused about “cost”
+
+### Cold starts (the usual myth)
+
+People say:
+
+> “More Lambdas = more cold starts = more cost”
+
+Reality:
+
+* Cold starts affect **latency**, not **billing**
+* You are billed only for execution time
+* Cold start overhead is milliseconds, not cost-significant
+
+So again — **not a cost argument**.
+
+---
+
+## 3️⃣ The REAL difference: engineering quality
+
+Now we get to what actually matters.
+
+---
+
+## Option A — **One Lambda for everything** (what you’re doing now)
+
+### Pros
+
+* Faster to start
+* Fewer CDK resources
+* Easy routing in early stage
+* Fine for prototypes and learning
+
+### Cons (these are real)
+
+* One bug can break all APIs
+* IAM permissions become broader over time
+* Harder to scale teams
+* Harder to test
+* Harder to reason about blast radius
+
+### When it’s acceptable
+
+* Early development
+* Solo project
+* Low traffic
+* Learning phase
+
+👉 **This is where you are right now — and that’s okay**
+
+---
+
+## Option B — **Multiple Lambdas (by responsibility)**
+
+Example:
+
+* `getSprintsLambda`
+* `createSprintLambda`
+* `updateTaskLambda`
+
+### Pros
+
+* Clean separation of concerns
+* Least-privilege IAM per function
+* Independent scaling
+* Easier testing
+* Easier debugging
+* Easier ownership in teams
+
+### Cons
+
+* Slightly more CDK code
+* More resources to manage
+
+### Cost impact
+
+👉 **Practically negligible difference**
+The real benefit is **maintainability**, not money.
+
+---
+
+## 4️⃣ What strong teams actually do (industry reality)
+
+Most **serious serverless systems** evolve like this:
+
+1. **Start with 1 Lambda**
+
+   * Route internally
+   * Prove the domain
+2. **Split by bounded context**
+
+   * Sprints Lambda
+   * Tasks Lambda
+   * Notifications Lambda
+3. **Never split “just because”**
+
+   * Split when responsibilities diverge
+
+This evolution path is **normal and healthy**.
+
+---
+
+## 5️⃣ What is CORRECT for *you* (ruthless answer)
+
+Given:
+
+* You already have a working single Lambda
+* You’re building a sprint tracker
+* Your goal is **career growth + interviews**
+* Not premature optimization
+
+### ✅ Correct decision for now
+
+👉 **Keep ONE Lambda for now**
+
+But — and this is important —
+
+👉 **Structure the code as if you will split later**
+
+That means:
+
+* Clean routing layer
+* Separate service functions
+* No shared global state
+* No hard-coded assumptions
+
+So when you split later:
+
+* Logic moves, infra changes
+* No rewrite needed
+
+---
+
+## 6️⃣ How to explain this in interviews (very important)
+
+If asked:
+
+> “Do you prefer single or multiple Lambdas?”
+
+Your answer should be:
+
+> “I start with a single Lambda for early development to reduce complexity. As the domain grows, I split by responsibility to improve isolation, security, and maintainability. Cost is usually not the deciding factor.”
+
+That answer signals:
+
+* Experience
+* Maturity
+* Real-world thinking
+
+---
+
+## 7️⃣ The wrong answers (avoid these)
+
+❌ “Single Lambda is cheaper”
+❌ “Multiple Lambdas are always better”
+❌ “AWS best practice says X” (without reasoning)
+
+Those answers get rejected fast.
+
+---
+
+## Final verdict (no sugar-coating)
+
+* **Cost-effective?** → Roughly the same
+* **Correct long-term?** → Multiple Lambdas
+* **Correct for you right now?** → One Lambda, structured well
+
+You made the **right call** starting with one Lambda.
+
+---
+
+### Next logical step (when you’re ready)
+
+We refactor your Lambda code into:
+
+* router
+* service layer
+* repository (DynamoDB)
+
+So later splitting is trivial.
+- Update api-stack.ts with addresource/GET/POST resources `cdk synth`
+`cdk deploy SprintTracker-Dev-Api`
+
+after updating lambda/handler/index.ts, run
+`cdk deploy SprintTracker-Dev-Lambda`
+
+![alt text](image-111.png)
+![alt text](image-112.png)
+![alt text](image-113.png)
+
+CloudFront
+![alt text](image-114.png)
+![alt text](image-115.png)
+![alt text](image-116.png)
+Client
+  └─ Authorization: Bearer <JWT>
+       ↓
+API Gateway (Cognito Authorizer)
+       ↓
+Lambda (claims available)
+       ↓
+Service → Repository → DynamoDB
+
+
+# Sprint Tracker – Architecture
+
+## Frontend
+- React (Vite)
+- Hosted on S3
+- Distributed via CloudFront (OAC enabled)
+
+## Authentication
+- Amazon Cognito User Pool
+- JWT passed as Authorization: Bearer token
+- API Gateway Cognito Authorizer validates tokens
+
+## Backend
+- API Gateway (REST)
+- Lambda (Node.js 18)
+- DynamoDB (Single-table design)
+
+## Data Access Pattern
+- PK: USER#{sub}
+- SK: SPRINT#{id}
+
+## Security Decisions
+- S3 private, only CloudFront can access
+- No credentials in frontend
+- JWT never stored in localStorage (explain where you store it)
+
+## Deployment
+- Infra via AWS CDK
+- UI deployed independently (S3 + CloudFront)

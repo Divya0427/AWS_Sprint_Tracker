@@ -28,7 +28,7 @@ async function authFetch(path: string, options: RequestInit = {}) {
 export async function getWorkload(
   sprintId: string = "SPRINT_1"
 ): Promise<WorkloadRow[]> {
-  return authFetch(`/api/sprints/${encodeURIComponent(sprintId)}/workload`, {
+  return authFetch(`/sprints/${encodeURIComponent(sprintId)}/workload`, {
     method: "GET",
   });
 }

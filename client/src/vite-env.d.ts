@@ -7,3 +7,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/* “Vite injects env variables at build time, but TypeScript needs explicit typing to recognize them.” */

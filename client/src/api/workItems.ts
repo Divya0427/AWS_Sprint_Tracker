@@ -17,7 +17,7 @@ export async function updateWorkItem(
   const token = await getAccessToken();
 
   const res = await fetch(
-    `${API_BASE}/api/protocols/${encodeURIComponent(
+    `${API_BASE}/protocols/${encodeURIComponent(
       protocolId
     )}/work/${encodeURIComponent(disc)}`,
     {

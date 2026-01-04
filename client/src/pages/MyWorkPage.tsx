@@ -20,10 +20,9 @@ import {
 
 import SearchIcon from "@mui/icons-material/Search";
 import SortIcon from "@mui/icons-material/Sort";
-// import { apiGetMyWork, apiUpdateWorkItem } from "../services/api";
+
 import { getMyWork } from "../api/myWork";
 import { updateWorkItem } from "../api/workItems";
-
 import { Protocol } from "../types";
 
 export default function MyWorkPage() {
@@ -39,13 +38,13 @@ export default function MyWorkPage() {
 
   const loadData = async () => {
     try {
-      const data = await getMyWork(); // from AWS
-      setProtocols(data);
+      const data = await getMyWork();
+      console.log("MY WORK RESPONSE:", data);
+      setProtocols(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load my work", err);
     }
   };
-
 
   useEffect(() => {
     loadData();
@@ -60,7 +59,7 @@ export default function MyWorkPage() {
     "Done",
   ];
 
-  const discColors: any = {
+  const discColors: Record<string, any> = {
     ui: "primary",
     server: "success",
     db: "warning",
@@ -85,71 +84,43 @@ export default function MyWorkPage() {
     }
   };
 
-
-  // Flatten protocols into rows
+  /**
+   * FLATTEN DATA SAFELY
+   * - Never assume p.work exists
+   * - Never assume discipline exists
+   */
   const flatRows = useMemo(() => {
     const list: any[] = [];
 
-    protocols.forEach((p) => {
-      ["ui", "server", "db", "ldap"].forEach((disc) => {
-        const w = p.work[disc];
-        if (!w) return;
-        if (!w.assignee && !w.sp) return;
+    protocols.forEach((p: any) => {
+  (['ui', 'server', 'db', 'ldap'] as const).forEach((disc) => {
+    const assignee = p[`${disc}Assignee`];
+    const sp = p[`${disc}SP`];
 
-        list.push({
-          protocolId: p.id,
-          protocolName: p.name,
-          fixedVersion: p.fixedVersion,
-          disc,
-          assignee: w.assignee,
-          sp: w.sp,
-          status: w.status,
-          targetDate: w.targetDate,
-          comments: w.comments,
-        });
-      });
+    if (!assignee && !sp) return;
+
+    list.push({
+      protocolId: p.id,
+      protocolName: p.name,
+      fixedVersion: p.fixedVersion,
+      disc,
+      assignee,
+      sp,
+      status: p[`${disc}Status`],
+      targetDate: p[`${disc}TargetDate`],
+      comments: p[`${disc}Comments`],
     });
+  });
+});
+
 
     return list;
   }, [protocols]);
 
-  // Unique Assignees
   const assignees = Array.from(
-    new Set(flatRows.map((r) => r.assignee).filter((x) => x))
+    new Set(flatRows.map((r) => r.assignee).filter(Boolean))
   );
 
-  // CSV Export Helper
-  const exportToCSV = (rows: any[], filename: string) => {
-    if (!rows.length) {
-      alert("No data to export.");
-      return;
-    }
-
-    const headers = Object.keys(rows[0]);
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) =>
-        headers
-          .map((h) => {
-            const val = row[h] ?? "";
-            return `"${String(val).replace(/"/g, '""')}"`;
-          })
-          .join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-  };
-
-  // APPLY FILTERS
   const filteredRows = useMemo(() => {
     let list = [...flatRows];
 
@@ -165,7 +136,7 @@ export default function MyWorkPage() {
       list = list.filter((r) => r.status === statusFilter);
     }
 
-    if (search.trim() !== "") {
+    if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
         (r) =>
@@ -183,14 +154,12 @@ export default function MyWorkPage() {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5" fontWeight={600} mb={3}>
-        My Work (With Filters + Export)
+        My Work
       </Typography>
 
       {/* FILTER PANEL */}
       <Card sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center">
-
-          {/* Assignee Filter */}
           <TextField
             select
             label="Assignee"
@@ -207,7 +176,6 @@ export default function MyWorkPage() {
             ))}
           </TextField>
 
-          {/* Discipline Filter */}
           <TextField
             select
             label="Discipline"
@@ -223,7 +191,6 @@ export default function MyWorkPage() {
             <MenuItem value="ldap">LDAP</MenuItem>
           </TextField>
 
-          {/* Status Filter */}
           <TextField
             select
             label="Status"
@@ -240,7 +207,6 @@ export default function MyWorkPage() {
             ))}
           </TextField>
 
-          {/* Search Bar */}
           <TextField
             label="Search"
             size="small"
@@ -256,7 +222,6 @@ export default function MyWorkPage() {
             }}
           />
 
-          {/* Sort SP */}
           <IconButton
             color="primary"
             onClick={() =>
@@ -271,37 +236,9 @@ export default function MyWorkPage() {
           >
             <SortIcon />
           </IconButton>
-
-          <Typography>
-            {sortBySP === "ASC"
-              ? "SP: Low → High"
-              : sortBySP === "DESC"
-              ? "SP: High → Low"
-              : "Sort by SP"}
-          </Typography>
         </Stack>
       </Card>
 
-      {/* DOWNLOAD BUTTONS */}
-      <Stack direction="row" spacing={2} mb={2}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => exportToCSV(filteredRows, "mywork_filtered.csv")}
-        >
-          Download Filtered Rows
-        </Button>
-
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={() => exportToCSV(flatRows, "mywork_all_rows.csv")}
-        >
-          Download All Rows
-        </Button>
-      </Stack>
-
-      {/* TABLE */}
       <Card sx={{ p: 2 }}>
         <Table size="small">
           <TableHead>
@@ -322,7 +259,6 @@ export default function MyWorkPage() {
               <TableRow key={index}>
                 <TableCell>{row.protocolName}</TableCell>
                 <TableCell>{row.fixedVersion}</TableCell>
-
                 <TableCell>
                   <Chip
                     label={row.disc.toUpperCase()}
@@ -330,7 +266,6 @@ export default function MyWorkPage() {
                     size="small"
                   />
                 </TableCell>
-
                 <TableCell>{row.assignee || "-"}</TableCell>
                 <TableCell>{row.sp}</TableCell>
 
@@ -341,12 +276,7 @@ export default function MyWorkPage() {
                     SelectProps={{ native: true }}
                     value={row.status}
                     onChange={(e) =>
-                      handleUpdate(
-                        row.protocolId,
-                        row.disc,
-                        "status",
-                        e.target.value
-                      )
+                      handleUpdate(row.protocolId, row.disc, "status", e.target.value)
                     }
                     disabled={updating}
                   >
@@ -362,14 +292,9 @@ export default function MyWorkPage() {
                   <TextField
                     type="date"
                     size="small"
-                    value={row.targetDate || ""}
+                    value={row.targetDate}
                     onChange={(e) =>
-                      handleUpdate(
-                        row.protocolId,
-                        row.disc,
-                        "targetDate",
-                        e.target.value
-                      )
+                      handleUpdate(row.protocolId, row.disc, "targetDate", e.target.value)
                     }
                     disabled={updating}
                   />
@@ -379,14 +304,9 @@ export default function MyWorkPage() {
                   <TextField
                     size="small"
                     fullWidth
-                    value={row.comments || ""}
+                    value={row.comments}
                     onChange={(e) =>
-                      handleUpdate(
-                        row.protocolId,
-                        row.disc,
-                        "comments",
-                        e.target.value
-                      )
+                      handleUpdate(row.protocolId, row.disc, "comments", e.target.value)
                     }
                     disabled={updating}
                   />
